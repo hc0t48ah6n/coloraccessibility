@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="ja" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>a11y-contrast-injector | 1行でWebのアクセシビリティを自動改善</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Scroll & Tab Animation Base Styles */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px) scale(0.98);
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: opacity, transform;
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .delay-100 { transition-delay: 100ms; }
+    .delay-200 { transition-delay: 200ms; }
+    .delay-300 { transition-delay: 300ms; }
+    .delay-400 { transition-delay: 400ms; }
+
+    /* Custom Scrollbar for Code Blocks */
+    pre::-webkit-scrollbar {
+      height: 6px;
+    }
+    pre::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <!-- Brand Logo -->
+      <div class="flex items-center space-x-3 cursor-pointer" id="brand-logo">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+          <i class="fa-solid fa-universal-access text-lg text-white"></i>
+        </div>
+        <span class="font-bold text-base sm:text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">a11y-contrast-injector</span>
+      </div>
+
+      <!-- Header Right Controls (Lang Switcher & GitHub) -->
+      <div class="flex items-center space-x-3">
+        <!-- Language Switcher -->
+        <div class="bg-slate-900 border border-slate-700/80 rounded-lg p-1 flex items-center space-x-1 text-xs">
+          <button id="lang-ja" class="px-2.5 py-1 rounded-md font-semibold bg-indigo-600 text-white transition">JP</button>
+          <button id="lang-en" class="px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition">EN</button>
+        </div>
+
+        <a href="https://github.com/hc0t48ah6n/coloraccessibility.git" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs font-semibold border border-slate-700 transition flex items-center space-x-2 text-slate-200 hover:text-white">
+          <i class="fa-brands fa-github text-sm"></i>
+          <span class="hidden sm:inline" data-i18n="nav_github">GitHub</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="border-t border-slate-800/60 bg-slate-950/50">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 flex space-x-1 sm:space-x-4 overflow-x-auto no-scrollbar">
+        <button class="tab-btn active px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 border-indigo-500 text-indigo-400 flex items-center space-x-2 whitespace-nowrap transition-all" data-tab="tab-home">
+          <i class="fa-solid fa-house text-xs"></i>
+          <span data-i18n="tab_home">ホーム</span>
+        </button>
+
+        <button class="tab-btn px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap transition-all" data-tab="tab-dev">
+          <i class="fa-solid fa-code text-xs"></i>
+          <span data-i18n="tab_dev">導入手順（JS1行）</span>
+        </button>
+
+        <button class="tab-btn px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap transition-all" data-tab="tab-pricing">
+          <i class="fa-solid fa-tag text-xs"></i>
+          <span class="flex items-center space-x-1.5">
+            <span data-i18n="tab_pricing">料金</span>
+            <span class="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold" data-i18n="tag_free">100% 無料</span>
+          </span>
+        </button>
+
+        <button class="tab-btn px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap transition-all" data-tab="tab-security">
+          <i class="fa-solid fa-shield-halved text-xs"></i>
+          <span data-i18n="tab_security">安全性 &amp; 性能</span>
+        </button>
+
+        <button class="tab-btn px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap transition-all" data-tab="tab-terms">
+          <i class="fa-solid fa-file-contract text-xs"></i>
+          <span data-i18n="tab_terms">利用規約</span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-grow">
+
+    <!-- TAB 1: HOME -->
+    <div id="tab-home" class="tab-content block">
+      <!-- Hero Section -->
+      <section class="py-12 sm:py-20 px-4 sm:px-6 max-w-5xl mx-auto text-center space-y-8">
+        <div class="reveal inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold">
+          <i class="fa-solid fa-sparkles"></i>
+          <span data-i18n="hero_badge">オープンソース &amp; JS1行読み込み</span>
+        </div>
+
+        <h1 class="reveal delay-100 text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight text-white" data-i18n="hero_title">
+          HTMLに<span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">1行追加</span>するだけで<br>
+          Webページのコントラスト不足を自動修復
+        </h1>
+
+        <p class="reveal delay-200 text-slate-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed" data-i18n="hero_desc">
+          見づらい低コントラストなテキストを自動検出し、WCAG 2.1規格（AAレベル 4.5:1）を満たすアクセシブルなCSSを動的に注入する軽量JavaScriptライブラリ。
+        </p>
+
+        <!-- One-line CDN Code Block -->
+        <div class="reveal delay-300 max-w-2xl mx-auto glass-card rounded-2xl p-4 sm:p-5 text-left shadow-2xl relative group">
+          <div class="flex justify-between items-center mb-2 text-xs text-slate-400">
+            <span class="font-mono text-indigo-400 flex items-center"><i class="fa-solid fa-code mr-1.5"></i> <span data-i18n="code_label">HTMLタグ（&lt;head&gt; 内に埋め込み）</span></span>
+            <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400">GitHub Pages CDN</span>
+          </div>
+          <pre class="font-mono text-xs sm:text-sm text-emerald-400 overflow-x-auto py-2"><code>&lt;script src="https://hc0t48ah6n.github.io/coloraccessibility/code.js" defer&gt;&lt;/script&gt;</code></pre>
+
+          <button id="btn-copy" class="mt-3 w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/20">
+            <i class="fa-regular fa-copy"></i>
+            <span id="copy-text" data-i18n="copy_code">コードをコピー</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Live Demo Section -->
+      <section class="py-16 bg-slate-900/50 border-y border-slate-800">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 space-y-8">
+          <div class="reveal text-center space-y-2">
+            <h2 class="text-2xl font-bold text-white" data-i18n="demo_title">インタラクティブ・デモ</h2>
+            <p class="text-slate-400 text-xs sm:text-sm" data-i18n="demo_subtitle">ボタンを押して、スクリプト実行前後の変化を試してみよう！</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+            <!-- Sample UI (Target Element) -->
+            <div class="reveal delay-100 bg-slate-950 rounded-2xl p-6 border border-slate-800 flex flex-col justify-between space-y-6 shadow-xl">
+              <div class="space-y-4">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block" data-i18n="demo_preview">プレビュー画面</span>
+
+                <div id="demo-card" class="p-5 rounded-xl bg-slate-900 border border-slate-800 transition-all duration-300">
+                  <h3 class="font-bold text-base text-slate-100 mb-1" data-i18n="demo_card_title">サンプルカード</h3>
+                  <p id="demo-text" class="text-xs transition-colors duration-300" style="color: #475569;" data-i18n="demo_text_initial">
+                    ⚠️ このテキストはコントラスト比が1.8:1しかなく、視認性が低い状態です（読みにくい！）。
+                  </p>
+                </div>
+              </div>
+
+              <div class="space-y-2">
+                <button id="btn-toggle-fix" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs shadow-lg shadow-indigo-500/20 transition flex items-center justify-center space-x-2">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i>
+                  <span id="demo-btn-text" data-i18n="demo_btn_run">自動コントラスト補正を実行</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Status & Log -->
+            <div class="reveal delay-200 bg-slate-950 rounded-2xl p-6 border border-slate-800 space-y-4 flex flex-col shadow-xl">
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block" data-i18n="demo_log_title">ステータス &amp; 計算ログ</span>
+              
+              <div class="space-y-3 font-mono text-xs flex-1 flex flex-col justify-center">
+                <div class="flex justify-between items-center p-3 rounded-lg bg-slate-900 border border-slate-800">
+                  <span class="text-slate-400" data-i18n="demo_current_ratio">現在のコントラスト比:</span>
+                  <span id="log-ratio" class="font-bold text-red-400">1.8 : 1 (NG)</span>
+                </div>
+                <div class="flex justify-between items-center p-3 rounded-lg bg-slate-900 border border-slate-800">
+                  <span class="text-slate-400" data-i18n="demo_target_spec">目標規格:</span>
+                  <span class="font-bold text-indigo-400">4.5 : 1 (WCAG AA)</span>
+                </div>
+                <div class="flex justify-between items-center p-3 rounded-lg bg-slate-900 border border-slate-800">
+                  <span class="text-slate-400" data-i18n="demo_fixed_color">補正後文字色:</span>
+                  <span id="log-color" class="font-bold text-slate-500" data-i18n="demo_not_applied">未適用 (#475569)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features Grid (Clickable Cards for Modal) -->
+      <section class="py-20 px-4 sm:px-6 max-w-5xl mx-auto space-y-12">
+        <div class="reveal text-center space-y-2">
+          <h2 class="text-2xl font-bold text-white" data-i18n="feat_title">主な特徴</h2>
+          <p class="text-slate-400 text-xs sm:text-sm" data-i18n="feat_subtitle">カードをクリックすると仕組みや詳細仕様が確認できます。</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <!-- Card 1 -->
+          <div class="feature-card reveal delay-100 glass-card p-6 rounded-2xl space-y-4 hover:border-indigo-500/50 transition duration-300 cursor-pointer group" data-feature="lightweight">
+            <div class="flex items-center justify-between">
+              <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold group-hover:scale-110 transition">
+                <i class="fa-solid fa-bolt"></i>
+              </div>
+              <span class="text-[11px] font-semibold text-indigo-400 flex items-center group-hover:translate-x-1 transition">
+                <span data-i18n="feat_more">詳細を見る</span> <i class="fa-solid fa-chevron-right ml-1 text-[9px]"></i>
+              </span>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-white mb-1" data-i18n="feat_1_title">超軽量・高速動作</h3>
+              <p class="text-xs text-slate-400 leading-relaxed" data-i18n="feat_1_desc">
+                外部ライブラリ不使用（バニラJS）。数キロバイトの極小サイズでページの読み込み速度を損ないません。
+              </p>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="feature-card reveal delay-200 glass-card p-6 rounded-2xl space-y-4 hover:border-purple-500/50 transition duration-300 cursor-pointer group" data-feature="realtime">
+            <div class="flex items-center justify-between">
+              <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold group-hover:scale-110 transition">
+                <i class="fa-solid fa-eye"></i>
+              </div>
+              <span class="text-[11px] font-semibold text-purple-400 flex items-center group-hover:translate-x-1 transition">
+                <span data-i18n="feat_more">詳細を見る</span> <i class="fa-solid fa-chevron-right ml-1 text-[9px]"></i>
+              </span>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-white mb-1" data-i18n="feat_2_title">リアルタイム動的監視</h3>
+              <p class="text-xs text-slate-400 leading-relaxed" data-i18n="feat_2_desc">
+                `MutationObserver` を搭載。SPAなどで後から追加された要素や動的コンテンツのテキストも即座に診断・修正します。
+              </p>
+            </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="feature-card reveal delay-300 glass-card p-6 rounded-2xl space-y-4 hover:border-emerald-500/50 transition duration-300 cursor-pointer group" data-feature="design">
+            <div class="flex items-center justify-between">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold group-hover:scale-110 transition">
+                <i class="fa-solid fa-palette"></i>
+              </div>
+              <span class="text-[11px] font-semibold text-emerald-400 flex items-center group-hover:translate-x-1 transition">
+                <span data-i18n="feat_more">詳細を見る</span> <i class="fa-solid fa-chevron-right ml-1 text-[9px]"></i>
+              </span>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-white mb-1" data-i18n="feat_3_title">色相を保つスマート調整</h3>
+              <p class="text-xs text-slate-400 leading-relaxed" data-i18n="feat_3_desc">
+                単に白黒へ変更するのではなく、元のデザインの色相（Hue）を保ったまま輝度のみを自動で調整します。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 2: DEVELOPER GUIDE (CDN ONLY) -->
+    <div id="tab-dev" class="tab-content hidden">
+      <section class="py-12 sm:py-16 px-4 sm:px-6 max-w-4xl mx-auto space-y-10">
+        <div class="text-center space-y-3">
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white" data-i18n="dev_title">簡単1行の導入手順</h2>
+          <p class="text-slate-400 text-xs sm:text-sm" data-i18n="dev_subtitle">面倒なパッケージインストールや初期設定は一切ありません。タグを貼るだけで即完了！</p>
+        </div>
+
+        <!-- CDN Steps -->
+        <div class="glass-card rounded-2xl p-6 sm:p-8 space-y-6">
+          <div class="flex items-center space-x-3 border-b border-slate-800 pb-4">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">1</div>
+            <div>
+              <h3 class="font-bold text-base text-white" data-i18n="dev_step1_title">HTMLの &lt;head&gt; にコードを貼る</h3>
+              <p class="text-xs text-slate-400" data-i18n="dev_step1_desc">以下のタグをコピーして、自分のWebサイトの &lt;head&gt; 内に追加してください。</p>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <span class="text-xs text-slate-400 font-mono">GitHub Pages CDN:</span>
+            <pre class="bg-slate-950 p-4 rounded-xl text-emerald-400 font-mono text-xs overflow-x-auto border border-slate-800"><code>&lt;script src="https://hc0t48ah6n.github.io/coloraccessibility/code.js" defer&gt;&lt;/script&gt;</code></pre>
+          </div>
+
+          <div class="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300 space-y-2">
+            <span class="font-bold text-white flex items-center">
+              <i class="fa-solid fa-circle-check text-emerald-400 mr-2"></i>
+              <span data-i18n="dev_done_title">これだけで完了です！</span>
+            </span>
+            <p class="text-slate-300 leading-relaxed" data-i18n="dev_done_desc">
+              スクリプトが読み込まれると、自動的にページ全体の文字と背景のコントラスト比がスキャンされ、WCAG AA規格（4.5:1）を満たしていないテキストだけに動的な補正CSSが注入されます。
+            </p>
+          </div>
+        </div>
+
+        <!-- Custom Attribute Options -->
+        <div class="glass-card rounded-2xl p-6 space-y-4">
+          <h3 class="font-bold text-base text-white border-b border-slate-800 pb-3" data-i18n="dev_opt_title">簡単なオプション設定（HTML属性）</h3>
+          <p class="text-xs text-slate-400" data-i18n="dev_opt_desc">JavaScriptを書かなくても、scriptタグの `data-` 属性で手軽に挙動を変えられます。</p>
+          
+          <pre class="bg-slate-950 p-3 rounded-xl text-slate-200 font-mono text-xs overflow-x-auto border border-slate-800"><code>&lt;!-- 目標比率を最高基準（7.0 = AAA）にし、特定の除外クラスを指定する例 --&gt;
+&lt;script src="https://hc0t48ah6n.github.io/coloraccessibility/code.js" 
+        data-target-ratio="7.0" 
+        data-ignore-class="ignore-a11y" 
+        defer&gt;&lt;/script&gt;</code></pre>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 3: PRICING -->
+    <div id="tab-pricing" class="tab-content hidden">
+      <section class="py-12 sm:py-16 px-4 sm:px-6 max-w-4xl mx-auto space-y-10">
+        <div class="text-center space-y-3">
+          <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+            <i class="fa-solid fa-heart"></i>
+            <span data-i18n="pricing_badge">オープンソース &amp; 完全無料</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white" data-i18n="pricing_title">永久に無料利用可能</h2>
+          <p class="text-slate-400 text-xs sm:text-sm max-w-xl mx-auto" data-i18n="pricing_subtitle">商用・個人利用を問わず、すべての機能を制限なくご利用いただけます。</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Card: Free Plan -->
+          <div class="glass-card rounded-2xl p-6 sm:p-8 space-y-6 border-2 border-indigo-500/40 relative">
+            <div class="space-y-2">
+              <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider" data-i18n="pricing_plan_title">オープンソース版</span>
+              <div class="flex items-baseline space-x-2">
+                <span class="text-4xl font-extrabold text-white">¥0</span>
+                <span class="text-xs text-slate-400" data-i18n="pricing_forever">/ 永久無料</span>
+              </div>
+              <p class="text-xs text-slate-400" data-i18n="pricing_plan_desc">制限なしですべてのサイトに無制限で埋め込み可能。</p>
+            </div>
+
+            <ul class="space-y-3 text-xs text-slate-300">
+              <li class="flex items-center space-x-2">
+                <i class="fa-solid fa-check text-emerald-400"></i>
+                <span data-i18n="pricing_f1">商用利用・個人ブログ利用可能（MITライセンス）</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <i class="fa-solid fa-check text-emerald-400"></i>
+                <span data-i18n="pricing_f2">PV数・ドメイン数の制限なし</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <i class="fa-solid fa-check text-emerald-400"></i>
+                <span data-i18n="pricing_f3">自動リアルタイムコントラスト補正</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <i class="fa-solid fa-check text-emerald-400"></i>
+                <span data-i18n="pricing_f4">CDN経由の無制限利用</span>
+              </li>
+            </ul>
+
+            <a href="https://github.com/hc0t48ah6n/coloraccessibility.git" target="_blank" rel="noopener noreferrer" class="block w-full text-center py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 transition">
+              <i class="fa-brands fa-github mr-1.5"></i>
+              <span data-i18n="pricing_github_btn">GitHubでソースコードを見る</span>
+            </a>
+          </div>
+
+          <!-- FAQ: Why Free? -->
+          <div class="glass-card rounded-2xl p-6 space-y-4 flex flex-col justify-between">
+            <div class="space-y-4">
+              <h3 class="font-bold text-base text-white flex items-center">
+                <i class="fa-solid fa-circle-question text-indigo-400 mr-2"></i>
+                <span data-i18n="faq_title">なぜ無料で提供できるのですか？</span>
+              </h3>
+              <p class="text-xs text-slate-400 leading-relaxed" data-i18n="faq_p1">
+                本ライブラリはすべての処理をユーザーのブラウザ上（クライアントサイド）で実行します。
+              </p>
+              <p class="text-xs text-slate-400 leading-relaxed" data-i18n="faq_p2">
+                外部サーバーへのAPIリクエストやデータ送信を行わないため、サーバーインフラ費用が発生しません。そのため、オープンソース（MITライセンス）として世界中で永久無料でご提供できます。
+              </p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400 space-y-1">
+              <span class="font-bold text-slate-200" data-i18n="faq_note_title">💡 オープンアクセシビリティ推進</span>
+              <p data-i18n="faq_note_desc">「誰もが読みやすいWeb」を広める活動の一環として開発・維持されています。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 4: SECURITY & PERFORMANCE -->
+    <div id="tab-security" class="tab-content hidden">
+      <section class="py-12 sm:py-16 px-4 sm:px-6 max-w-4xl mx-auto space-y-10">
+        <div class="text-center space-y-3">
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white" data-i18n="sec_title">安全性 &amp; パフォーマンス</h2>
+          <p class="text-slate-400 text-xs sm:text-sm" data-i18n="sec_subtitle">セキュリティに厳しい企業サイトや個人情報を取り扱うサービスでも安心して導入できます。</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div class="glass-card p-6 rounded-2xl space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-lock"></i>
+            </div>
+            <h3 class="font-bold text-sm text-white" data-i18n="sec_1_title">100% クライアントサイド完結</h3>
+            <p class="text-xs text-slate-400 leading-relaxed" data-i18n="sec_1_desc">
+              ユーザーの閲覧ログや入力データ、ページ内容を外部サーバーへ送信することは一切ありません。完全なプライバシー保護を実現します。
+            </p>
+          </div>
+
+          <div class="glass-card p-6 rounded-2xl space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-microchip"></i>
+            </div>
+            <h3 class="font-bold text-sm text-white" data-i18n="sec_2_title">ゼロ・ディペンデンシー (0依存)</h3>
+            <p class="text-xs text-slate-400 leading-relaxed" data-i18n="sec_2_desc">
+              他社サードパーティ製ライブラリに一切依存していません。サプライチェーン攻撃のリスクを極限まで低減しています。
+            </p>
+          </div>
+
+          <div class="glass-card p-6 rounded-2xl space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-gauge-high"></i>
+            </div>
+            <h3 class="font-bold text-sm text-white" data-i18n="sec_3_title">Core Web Vitals への非影響</h3>
+            <p class="text-xs text-slate-400 leading-relaxed" data-i18n="sec_3_desc">
+              スクリプトサイズは約 3KB (gzip済)。非同期（defer）読み込みに対応し、LCPやFID/INPといったページ速度指標に影響を与えません。
+            </p>
+          </div>
+
+          <div class="glass-card p-6 rounded-2xl space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-shield-cat"></i>
+            </div>
+            <h3 class="font-bold text-sm text-white" data-i18n="sec_4_title">CSP（Content Security Policy）互換</h3>
+            <p class="text-xs text-slate-400 leading-relaxed" data-i18n="sec_4_desc">
+              インラインスタイルの代わりに特定の動的StyleSheet要素をヘッダーへ安全に挿入するため、厳格なCSPポリシー環境下でも動作します。
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 5: TERMS OF SERVICE -->
+    <div id="tab-terms" class="tab-content hidden">
+      <section class="py-12 sm:py-16 px-4 sm:px-6 max-w-4xl mx-auto space-y-8">
+        <div class="text-center space-y-2">
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white" data-i18n="terms_title">利用規約</h2>
+          <p class="text-slate-400 text-xs sm:text-sm" data-i18n="terms_subtitle">本ライブラリのご利用にあたっての条件および免責事項について記載しています。</p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 sm:p-8 space-y-6 text-xs sm:text-sm text-slate-300 leading-relaxed">
+          <div class="space-y-2 border-b border-slate-800 pb-5">
+            <h3 class="font-bold text-white text-base flex items-center">
+              <i class="fa-solid fa-circle-check text-indigo-400 mr-2 text-sm"></i>
+              <span data-i18n="terms_s1_title">第1条（適用・ライセンス）</span>
+            </h3>
+            <p data-i18n="terms_s1_desc">
+              本ライブラリ（a11y-contrast-injector）は、MITライセンスの下で提供されています。商用利用、個人利用、改変、再配布を問わず、制限なく無料でご利用いただけます。
+            </p>
+          </div>
+
+          <div class="space-y-2 border-b border-slate-800 pb-5">
+            <h3 class="font-bold text-white text-base flex items-center">
+              <i class="fa-solid fa-triangle-exclamation text-amber-400 mr-2 text-sm"></i>
+              <span data-i18n="terms_s2_title">第2条（免責事項）</span>
+            </h3>
+            <p data-i18n="terms_s2_desc">
+              作者（hc0t48ah6n）は、本ライブラリの動作に関して、特定の目的への適合性、バグや不具合がないこと、第三者の権利侵害がないこと等を含め、いかなる保証も行いません。本ライブラリの利用に起因して生じたいかなる損害（直接的・間接的問わず）についても、作者は一切の責任を負いません。
+            </p>
+          </div>
+
+          <div class="space-y-2 border-b border-slate-800 pb-5">
+            <h3 class="font-bold text-white text-base flex items-center">
+              <i class="fa-solid fa-screwdriver-wrench text-purple-400 mr-2 text-sm"></i>
+              <span data-i18n="terms_s3_title">第3条（サービスの変更・中断）</span>
+            </h3>
+            <p data-i18n="terms_s3_desc">
+              CDNによるスクリプト配信および本ページの内容は、予告なく変更または終了される場合があります。本番環境でご利用の際は、必要に応じてコードを自社サーバーやCDNへホスティングしてご利用ください。
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <h3 class="font-bold text-white text-base flex items-center">
+              <i class="fa-solid fa-code-branch text-emerald-400 mr-2 text-sm"></i>
+              <span data-i18n="terms_s4_title">第4条（著作権・オープンソース）</span>
+            </h3>
+            <p data-i18n="terms_s4_desc">
+              著作権は作者（hc0t48ah6n）に帰属します。ソースコードの改変やコントリビューションは、GitHubリポジトリを通じて歓迎いたします。
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+  </main>
+
+  <!-- Feature Detail Modal -->
+  <div id="feature-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl transform scale-95 transition-all duration-300 relative" id="modal-container">
+      
+      <button id="modal-close" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <div class="flex items-center space-x-3">
+        <div id="modal-icon" class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-lg">
+          <i class="fa-solid fa-bolt"></i>
+        </div>
+        <h3 id="modal-title" class="font-bold text-lg text-white">機能の詳細</h3>
+      </div>
+
+      <div id="modal-content" class="text-xs sm:text-sm text-slate-300 leading-relaxed space-y-3">
+        <!-- Content inserted dynamically -->
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end">
+        <button id="modal-btn-close" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs transition" data-i18n="modal_close">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 py-8 text-center text-xs text-slate-500">
+    <p>© 2026 hc0t48ah6n. MIT License.</p>
+  </footer>
+
+  <!-- JavaScript Logic with i18n support -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+      // --- i18n Translations Dictionary ---
+      const translations = {
+        ja: {
+          nav_github: "GitHub",
+          tab_home: "ホーム",
+          tab_dev: "導入手順（JS1行）",
+          tab_pricing: "料金",
+          tag_free: "100% 無料",
+          tab_security: "安全性 & 性能",
+          tab_terms: "利用規約",
+          hero_badge: "オープンソース & JS1行読み込み",
+          hero_title: 'HTMLに<span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">1行追加</span>するだけで<br>Webページのコントラスト不足を自動修復',
+          hero_desc: "見づらい低コントラストなテキストを自動検出し、WCAG 2.1規格（AAレベル 4.5:1）を満たすアクセシブルなCSSを動的に注入する軽量JavaScriptライブラリ。",
+          code_label: "HTMLタグ（<head> 内に埋め込み）",
+          copy_code: "コードをコピー",
+          copied: "コピー完了！",
+          demo_title: "インタラクティブ・デモ",
+          demo_subtitle: "ボタンを押して、スクリプト実行前後の変化を試してみよう！",
+          demo_preview: "プレビュー画面",
+          demo_card_title: "サンプルカード",
+          demo_text_initial: "⚠️ このテキストはコントラスト比が1.8:1しかなく、視認性が低い状態です（読みにくい！）。",
+          demo_text_fixed: "✨ 補正完了！コントラスト比が 5.2:1 に向上し、誰でも読みやすくなりました。",
+          demo_btn_run: "自動コントラスト補正を実行",
+          demo_btn_reset: "元の状態に戻す",
+          demo_log_title: "ステータス & 計算ログ",
+          demo_current_ratio: "現在のコントラスト比:",
+          demo_target_spec: "目標規格:",
+          demo_fixed_color: "補正後文字色:",
+          demo_not_applied: "未適用 (#475569)",
+          demo_status_ng: "1.8 : 1 (NG)",
+          demo_status_ok: "5.2 : 1 (適合！)",
+          feat_title: "主な特徴",
+          feat_subtitle: "カードをクリックすると仕組みや詳細仕様が確認できます。",
+          feat_more: "詳細を見る",
+          feat_1_title: "超軽量・高速動作",
+          feat_1_desc: "外部ライブラリ不使用（バニラJS）。数キロバイトの極小サイズでページの読み込み速度を損ないません。",
+          feat_2_title: "リアルタイム動的監視",
+          feat_2_desc: "`MutationObserver` を搭載。SPAなどで後から追加された要素や動的コンテンツのテキストも即座に診断・修正します。",
+          feat_3_title: "色相を保つスマート調整",
+          feat_3_desc: "単に白黒へ変更するのではなく、元のデザインの色相（Hue）を保ったまま輝度のみを自動で調整します。",
+          dev_title: "簡単1行の導入手順",
+          dev_subtitle: "面倒なパッケージインストールや初期設定は一切ありません。タグを貼るだけで即完了！",
+          dev_step1_title: "HTMLの <head> にコードを貼る",
+          dev_step1_desc: "以下のタグをコピーして、自分のWebサイトの <head> 内に追加してください。",
+          dev_done_title: "これだけで完了です！",
+          dev_done_desc: "スクリプトが読み込まれると、自動的にページ全体の文字と背景のコントラスト比がスキャンされ、WCAG AA規格（4.5:1）を満たしていないテキストだけに動的な補正CSSが注入されます。",
+          dev_opt_title: "簡単なオプション設定（HTML属性）",
+          dev_opt_desc: "JavaScriptを書かなくても、scriptタグの `data-` 属性で手軽に挙動を変えられます。",
+          pricing_badge: "オープンソース & 完全無料",
+          pricing_title: "永久に無料利用可能",
+          pricing_subtitle: "商用・個人利用を問わず、すべての機能を制限なくご利用いただけます。",
+          pricing_plan_title: "オープンソース版",
+          pricing_forever: "/ 永久無料",
+          pricing_plan_desc: "制限なしですべてのサイトに無制限で埋め込み可能。",
+          pricing_f1: "商用利用・個人ブログ利用可能（MITライセンス）",
+          pricing_f2: "PV数・ドメイン数の制限なし",
+          pricing_f3: "自動リアルタイムコントラスト補正",
+          pricing_f4: "CDN経由の無制限利用",
+          pricing_github_btn: "GitHubでソースコードを見る",
+          faq_title: "なぜ無料で提供できるのですか？",
+          faq_p1: "本ライブラリはすべての処理をユーザーのブラウザ上（クライアントサイド）で実行します。",
+          faq_p2: "外部サーバーへのAPIリクエストやデータ送信を行わないため、サーバーインフラ費用が発生しません。そのため、オープンソース（MITライセンス）として世界中で永久無料でご提供できます。",
+          faq_note_title: "💡 オープンアクセシビリティ推進",
+          faq_note_desc: "「誰もが読みやすいWeb」を広める活動の一環として開発・維持されています。",
+          sec_title: "安全性 & パフォーマンス",
+          sec_subtitle: "セキュリティに厳しい企業サイトや個人情報を取り扱うサービスでも安心して導入できます。",
+          sec_1_title: "100% クライアントサイド完結",
+          sec_1_desc: "ユーザーの閲覧ログや入力データ、ページ内容を外部サーバーへ送信することは一切ありません。完全なプライバシー保護を実現します。",
+          sec_2_title: "ゼロ・ディペンデンシー (0依存)",
+          sec_2_desc: "他社サードパーティ製ライブラリに一切依存していません。サプライチェーン攻撃のリスクを極限まで低減しています。",
+          sec_3_title: "Core Web Vitals への非影響",
+          sec_3_desc: "スクリプトサイズは約 3KB (gzip済)。非同期（defer）読み込みに対応し、LCPやFID/INPといったページ速度指標に影響を与えません。",
+          sec_4_title: "CSP（Content Security Policy）互換",
+          sec_4_desc: "インラインスタイルの代わりに特定の動的StyleSheet要素をヘッダーへ安全に挿入するため、厳格なCSPポリシー環境下でも動作します。",
+          terms_title: "利用規約",
+          terms_subtitle: "本ライブラリのご利用にあたっての条件および免責事項について記載しています。",
+          terms_s1_title: "第1条（適用・ライセンス）",
+          terms_s1_desc: "本ライブラリ（a11y-contrast-injector）は、MITライセンスの下で提供されています。商用利用、個人利用、改変、再配布を問わず、制限なく無料でご利用いただけます。",
+          terms_s2_title: "第2条（免責事項）",
+          terms_s2_desc: "作者（hc0t48ah6n）は、本ライブラリの動作に関して、特定の目的への適合性、バグや不具合がないこと、第三者の権利侵害がないこと等を含め、いかなる保証も行いません。本ライブラリの利用に起因して生じたいかなる損害（直接的・間接的問わず）についても、作者は一切の責任を負いません。",
+          terms_s3_title: "第3条（サービスの変更・中断）",
+          terms_s3_desc: "CDNによるスクリプト配信および本ページの内容は、予告なく変更または終了される場合があります。本番環境でご利用の際は、必要に応じてコードを自社サーバーやCDNへホスティングしてご利用ください。",
+          terms_s4_title: "第4条（著作権・オープンソース）",
+          terms_s4_desc: "著作権は作者（hc0t48ah6n）に帰属します。ソースコードの改変やコントリビューションは、GitHubリポジトリを通じて歓迎いたします。",
+          modal_close: "閉じる"
+        },
+        en: {
+          nav_github: "GitHub",
+          tab_home: "Home",
+          tab_dev: "Setup (1-Line JS)",
+          tab_pricing: "Pricing",
+          tag_free: "100% Free",
+          tab_security: "Security & Perf",
+          tab_terms: "Terms",
+          hero_badge: "Open Source & Single Line Include",
+          hero_title: 'Fix low text contrast automatically<br>by adding <span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">1 line to your HTML</span>',
+          hero_desc: "A lightweight JavaScript library that automatically detects low-contrast text and dynamically injects accessible CSS complying with WCAG 2.1 (AA level 4.5:1).",
+          code_label: "HTML Tag (Paste inside <head>)",
+          copy_code: "Copy Code",
+          copied: "Copied!",
+          demo_title: "Interactive Demo",
+          demo_subtitle: "Click the button below to test the script before and after execution!",
+          demo_preview: "Preview Screen",
+          demo_card_title: "Sample Card",
+          demo_text_initial: "⚠️ This text has a contrast ratio of only 1.8:1 and is hard to read!",
+          demo_text_fixed: "✨ Contrast fixed! Increased to 5.2:1 ratio for optimal readability for everyone.",
+          demo_btn_run: "Run Auto Contrast Fix",
+          demo_btn_reset: "Reset to Original",
+          demo_log_title: "Status & Calculation Log",
+          demo_current_ratio: "Current Ratio:",
+          demo_target_spec: "Target Standard:",
+          demo_fixed_color: "Adjusted Color:",
+          demo_not_applied: "Not Applied (#475569)",
+          demo_status_ng: "1.8 : 1 (Fail)",
+          demo_status_ok: "5.2 : 1 (Pass!)",
+          feat_title: "Key Features",
+          feat_subtitle: "Click any card to view detailed specifications and mechanisms.",
+          feat_more: "Learn More",
+          feat_1_title: "Ultra Lightweight & Fast",
+          feat_1_desc: "Zero dependencies (Vanilla JS). Compact size of just a few KB without degrading page speed.",
+          feat_2_title: "Real-time Dynamic Scanning",
+          feat_2_desc: "Powered by `MutationObserver`. Instantly diagnoses and fixes text dynamically added in SPAs.",
+          feat_3_title: "Hue-Preserving Adjustments",
+          feat_3_desc: "Does not force black/white text. Preserves original hue and adjusts only lightness for harmony.",
+          dev_title: "1-Line Setup Guide",
+          dev_subtitle: "No package installs or tedious configurations required. Simply paste the tag and you're good to go!",
+          dev_step1_title: "Paste code into HTML <head>",
+          dev_step1_desc: "Copy the tag below and add it inside your site's <head> section.",
+          dev_done_title: "That's all!",
+          dev_done_desc: "Once loaded, the script scans text contrast ratios across the page and injects dynamic CSS fixes only where WCAG AA (4.5:1) standards are not met.",
+          dev_opt_title: "Easy Options (HTML Attributes)",
+          dev_opt_desc: "Customize behavior easily using `data-` attributes on the script tag without writing JS code.",
+          pricing_badge: "Open Source & Always Free",
+          pricing_title: "Free Forever",
+          pricing_subtitle: "Use all features without limits for both personal and commercial projects.",
+          pricing_plan_title: "Open Source Edition",
+          pricing_forever: "/ Forever Free",
+          pricing_plan_desc: "Unlimited embeds across all your websites and projects.",
+          pricing_f1: "Commercial & Personal usage allowed (MIT License)",
+          pricing_f2: "No pageview or domain limitations",
+          pricing_f3: "Real-time automated contrast correction",
+          pricing_f4: "Unlimited CDN usage",
+          pricing_github_btn: "View Source on GitHub",
+          faq_title: "Why is it completely free?",
+          faq_p1: "All contrast computations run strictly on the user's browser (client-side).",
+          faq_p2: "Because no external server APIs or data transmissions are involved, server infrastructure cost is zero. Hence, it is offered as open source (MIT License) forever free.",
+          faq_note_title: "💡 Open Accessibility Initiative",
+          faq_note_desc: "Developed and maintained to promote a web accessible to everyone.",
+          sec_title: "Security & Performance",
+          sec_subtitle: "Safe to deploy even on high-security enterprise sites and platforms handling sensitive data.",
+          sec_1_title: "100% Client-Side Execution",
+          sec_1_desc: "Zero data, logs, or page contents are sent to external servers. Guarantees 100% privacy compliance.",
+          sec_2_title: "Zero Dependencies",
+          sec_2_desc: "Completely independent of 3rd party libraries, mitigating supply chain security risks.",
+          sec_3_title: "Zero Impact on Core Web Vitals",
+          sec_3_desc: "Script size is ~3KB (gzipped). Supports asynchronous (`defer`) loading without affecting LCP/INP scores.",
+          sec_4_title: "CSP Compatible",
+          sec_4_desc: "Safely injects dedicated dynamic stylesheets instead of inline style attributes, complying with strict CSP policies.",
+          terms_title: "Terms of Service",
+          terms_subtitle: "Conditions and disclaimers for using this library.",
+          terms_s1_title: "Section 1 (License & Usage)",
+          terms_s1_desc: "This library (a11y-contrast-injector) is provided under the MIT License. You are free to use, modify, and distribute it for commercial or personal purposes without restriction.",
+          terms_s2_title: "Section 2 (Disclaimer)",
+          terms_s2_desc: "The author (hc0t48ah6n) provides no warranties regarding the operation of this library, including merchantability, fitness for a particular purpose, absence of bugs, or non-infringement. The author shall not be held liable for any damages arising from its use.",
+          terms_s3_title: "Section 3 (Modifications & Interruptions)",
+          terms_s3_desc: "CDN script delivery and page contents are subject to change or termination without prior notice. For production environments, please consider self-hosting or pinning versions as needed.",
+          terms_s4_title: "Section 4 (Copyright)",
+          terms_s4_desc: "Copyright remains with the author (hc0t48ah6n). Contributions and pull requests via GitHub are always welcome.",
+          modal_close: "Close"
+        }
+      };
+
+      let currentLang = 'ja';
+
+      // --- Feature Details for Modal (i18n) ---
+      const featureDetails = {
+        lightweight: {
+          ja: {
+            title: "超軽量・バニラJS設計",
+            icon: '<i class="fa-solid fa-bolt"></i>',
+            iconStyle: "bg-indigo-500/20 text-indigo-400",
+            content: `
+              <p>外部ライブラリ（ReactやjQuery等）に依存せず、純粋なJavaScript（Vanilla JS）のみで記述されています。</p>
+              <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1 font-mono text-xs">
+                <span class="text-slate-400">ファイルサイズ:</span> <span class="text-emerald-400">~3.2 KB (Minified + Gzip)</span><br>
+                <span class="text-slate-400">初期実行コスト:</span> <span class="text-emerald-400">&lt; 2ms</span>
+              </div>
+              <p>スクリプトのロード時間がほぼゼロのため、WebサイトのCore Web Vitalsを悪化させずに導入できます。</p>
+            `
+          },
+          en: {
+            title: "Ultra Lightweight & Vanilla JS",
+            icon: '<i class="fa-solid fa-bolt"></i>',
+            iconStyle: "bg-indigo-500/20 text-indigo-400",
+            content: `
+              <p>Written in pure JavaScript without external framework dependencies (React, jQuery, etc.).</p>
+              <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1 font-mono text-xs">
+                <span class="text-slate-400">File Size:</span> <span class="text-emerald-400">~3.2 KB (Minified + Gzip)</span><br>
+                <span class="text-slate-400">Execution Cost:</span> <span class="text-emerald-400">&lt; 2ms</span>
+              </div>
+              <p>Loads instantly without impacting page load metrics or Core Web Vitals.</p>
+            `
+          }
+        },
+        realtime: {
+          ja: {
+            title: "リアルタイム動的DOM監視（MutationObserver）",
+            icon: '<i class="fa-solid fa-eye"></i>',
+            iconStyle: "bg-purple-500/20 text-purple-400",
+            content: `
+              <p>ページ読み込み時の静的テキストだけでなく、ユーザーの操作によって動的に描画されるコンテンツも自動検知します。</p>
+              <p>内部ではブラウザ標準の <code class="text-purple-300 font-mono">MutationObserver</code> APIを使用し、効率的に差分ノードのみをスキャン・補正するため、レンダリングのチラつきやCPUの過負荷を防ぎます。</p>
+              <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl font-mono text-xs text-slate-400">
+                対象例: モーダル表示、SPAのページ遷移、非同期データ読み込み（Ajax/Fetch）後のテキスト表示
+              </div>
+            `
+          },
+          en: {
+            title: "Real-time DOM Observation (MutationObserver)",
+            icon: '<i class="fa-solid fa-eye"></i>',
+            iconStyle: "bg-purple-500/20 text-purple-400",
+            content: `
+              <p>Monitors not only initial static text but also dynamic DOM mutations rendered via user interactions.</p>
+              <p>Uses native <code class="text-purple-300 font-mono">MutationObserver</code> API to scan delta nodes efficiently without screen flickering or CPU overhead.</p>
+              <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl font-mono text-xs text-slate-400">
+                Examples: Modals, SPA routing, dynamic Ajax content loading.
+              </div>
+            `
+          }
+        },
+        design: {
+          ja: {
+            title: "色相（Hue）を維持するカラー補正アルゴリズム",
+            icon: '<i class="fa-solid fa-palette"></i>',
+            iconStyle: "bg-emerald-500/20 text-emerald-400",
+            content: `
+              <p>単純に黒（#000）や白（#FFF）へ置換するのではなく、元のWebデザインのトーン＆マナーを尊重します。</p>
+              <p>テキストの色を <strong>HSLカラー空間</strong> に変換し、色相（Hue）と彩度（Saturation）を固定したまま、背景色との関係性に基づいて <strong>輝度（Lightness）のみを調整</strong> します。</p>
+              <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl font-mono text-xs text-emerald-400">
+                例: 薄い青色テキスト (#93c5fd) → 同系統の濃い青色 (#1d4ed8) に自然補正
+              </div>
+            `
+          },
+          en: {
+            title: "Hue-Preserving Color Algorithm",
+            icon: '<i class="fa-solid fa-palette"></i>',
+            iconStyle: "bg-emerald-500/20 text-emerald-400",
+            content: `
+              <p>Instead of forcing plain black or white text, it respects your site's visual design branding.</p>
+              <p>Converts colors to <strong>HSL color space</strong> and adjusts <strong>lightness only</strong> while maintaining original hue and saturation.</p>
+              <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl font-mono text-xs text-emerald-400">
+                Example: Light blue text (#93c5fd) → Natural dark blue (#1d4ed8)
+              </div>
+            `
+          }
+        }
+      };
+
+      // Set Language Routine
+      const setLanguage = (lang) => {
+        currentLang = lang;
+        document.documentElement.lang = lang;
+        const dict = translations[lang];
+
+        // Update Text Elements with data-i18n attribute
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          if (dict[key]) {
+            el.innerHTML = dict[key];
+          }
+        });
+
+        // Toggle Switcher UI Button Styles
+        const btnJa = document.getElementById('lang-ja');
+        const btnEn = document.getElementById('lang-en');
+
+        if (lang === 'ja') {
+          btnJa.className = 'px-2.5 py-1 rounded-md font-semibold bg-indigo-600 text-white transition';
+          btnEn.className = 'px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition';
+        } else {
+          btnEn.className = 'px-2.5 py-1 rounded-md font-semibold bg-indigo-600 text-white transition';
+          btnJa.className = 'px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition';
+        }
+
+        // Update Demo State Text if active
+        const demoText = document.getElementById('demo-text');
+        const demoBtnText = document.getElementById('demo-btn-text');
+        const logRatio = document.getElementById('log-ratio');
+        const logColor = document.getElementById('log-color');
+
+        if (isFixed) {
+          demoText.innerHTML = dict.demo_text_fixed;
+          demoBtnText.textContent = dict.demo_btn_reset;
+          logRatio.textContent = dict.demo_status_ok;
+          logColor.textContent = '#cbd5e1';
+        } else {
+          demoText.innerHTML = dict.demo_text_initial;
+          demoBtnText.textContent = dict.demo_btn_run;
+          logRatio.textContent = dict.demo_status_ng;
+          logColor.textContent = dict.demo_not_applied;
+        }
+      };
+
+      // Language Toggle Listeners
+      document.getElementById('lang-ja').addEventListener('click', () => setLanguage('ja'));
+      document.getElementById('lang-en').addEventListener('click', () => setLanguage('en'));
+
+      // --- Tab Switching Logic ---
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      const tabContents = document.querySelectorAll('.tab-content');
+
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetTabId = btn.getAttribute('data-tab');
+
+          tabBtns.forEach(b => {
+            b.classList.remove('active', 'border-indigo-500', 'text-indigo-400');
+            b.classList.add('border-transparent', 'text-slate-400');
+          });
+          btn.classList.add('active', 'border-indigo-500', 'text-indigo-400');
+          btn.classList.remove('border-transparent', 'text-slate-400');
+
+          tabContents.forEach(content => {
+            if (content.id === targetTabId) {
+              content.classList.remove('hidden');
+              content.classList.add('block');
+              triggerReveals(content);
+            } else {
+              content.classList.remove('block');
+              content.classList.add('hidden');
+            }
+          });
+        });
+      });
+
+      // --- Scroll Reveal Animations ---
+      const triggerReveals = (scope = document) => {
+        const revealElements = scope.querySelectorAll('.reveal');
+        revealElements.forEach(el => el.classList.add('active'));
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -20px 0px' });
+
+      document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+      // --- Copy Code Snippet ---
+      const btnCopy = document.getElementById('btn-copy');
+      const copyText = document.getElementById('copy-text');
+
+      if (btnCopy) {
+        btnCopy.addEventListener('click', () => {
+          const cdnScript = '<script src="https://hc0t48ah6n.github.io/coloraccessibility/code.js" defer><\/script>';
+          
+          // Fallback copy helper using document.execCommand to support iframe environments
+          const copyToClipboard = (text) => {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            // Place outside screen viewport
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            textArea.style.top = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            let successful = false;
+            try {
+              successful = document.execCommand('copy');
+            } catch (err) {
+              console.error('Copy execution failed:', err);
+            }
+            document.body.removeChild(textArea);
+            return successful;
+          };
+
+          const isCopied = copyToClipboard(cdnScript);
+          if (isCopied) {
+            copyText.textContent = translations[currentLang].copied;
+            setTimeout(() => { 
+              copyText.textContent = translations[currentLang].copy_code; 
+            }, 2000);
+          }
+        });
+      }
+
+      // --- Interactive Demo logic ---
+      const btnToggleFix = document.getElementById('btn-toggle-fix');
+      const demoText = document.getElementById('demo-text');
+      const logRatio = document.getElementById('log-ratio');
+      const logColor = document.getElementById('log-color');
+
+      let isFixed = false;
+
+      if (btnToggleFix) {
+        btnToggleFix.addEventListener('click', () => {
+          isFixed = !isFixed;
+          const dict = translations[currentLang];
+
+          if (isFixed) {
+            demoText.style.color = '#cbd5e1';
+            demoText.innerHTML = dict.demo_text_fixed;
+            logRatio.textContent = dict.demo_status_ok;
+            logRatio.className = 'font-bold text-emerald-400';
+            logColor.textContent = '#cbd5e1';
+            logColor.className = 'font-bold text-emerald-400';
+            document.getElementById('demo-btn-text').textContent = dict.demo_btn_reset;
+          } else {
+            demoText.style.color = '#475569';
+            demoText.innerHTML = dict.demo_text_initial;
+            logRatio.textContent = dict.demo_status_ng;
+            logRatio.className = 'font-bold text-red-400';
+            logColor.textContent = dict.demo_not_applied;
+            logColor.className = 'font-bold text-slate-500';
+            document.getElementById('demo-btn-text').textContent = dict.demo_btn_run;
+          }
+        });
+      }
+
+      // --- Feature Modal Logic ---
+      const modal = document.getElementById('feature-modal');
+      const modalContainer = document.getElementById('modal-container');
+      const modalTitle = document.getElementById('modal-title');
+      const modalIcon = document.getElementById('modal-icon');
+      const modalContent = document.getElementById('modal-content');
+      const modalCloseBtns = [document.getElementById('modal-close'), document.getElementById('modal-btn-close')];
+
+      document.querySelectorAll('.feature-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const key = card.getAttribute('data-feature');
+          const data = featureDetails[key] ? featureDetails[key][currentLang] : null;
+
+          if (data) {
+            modalTitle.textContent = data.title;
+            modalIcon.innerHTML = data.icon;
+            modalIcon.className = `w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${data.iconStyle}`;
+            modalContent.innerHTML = data.content;
+
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modalContainer.classList.remove('scale-95');
+            modalContainer.classList.add('scale-100');
+          }
+        });
+      });
+
+      const closeModal = () => {
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        modalContainer.classList.remove('scale-100');
+        modalContainer.classList.add('scale-95');
+      };
+
+      modalCloseBtns.forEach(btn => {
+        if (btn) btn.addEventListener('click', closeModal);
+      });
+
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+
+    });
+  </script>
+</body>
+</html>
